@@ -3,7 +3,7 @@ import axios from 'axios'
 import './App.css'
 import InventoryTable from './Components/InventoryTable'
 
-export const API_BASE = 'http://localhost:5000/api'
+export const API_BASE = process.env.API_BASE || 'https://element-backend-co6b.onrender.com'
 
 function App() {
   const [items, setItems] = useState([])
