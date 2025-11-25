@@ -20,7 +20,6 @@ const InventoryTable = ({ items, loadItems, TotalCount }) => {
             }
         }
     }
-    console.log((items));
 
     // Enter edit mode
     const enterEditMode = () => {

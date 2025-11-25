@@ -3,7 +3,7 @@ import axios from 'axios'
 import './App.css'
 import InventoryTable from './Components/InventoryTable'
 
-export const API_BASE = process.env.API_BASE || 'https://element-backend-co6b.onrender.com'
+export const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000/api'
 
 function App() {
   const [items, setItems] = useState([])
@@ -12,10 +12,11 @@ function App() {
   const [formData, setFormData] = useState({
     item_name: '',
     quantity: 1,
-    per_unit_price: null
+    per_unit_price: 0
   })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  // Load items on component mount
   useEffect(() => {
     loadItems()
   }, [])
@@ -23,26 +24,49 @@ function App() {
   // Load all items from API
   const loadItems = async () => {
     try {
+      setLoading(true)
       const response = await axios.get(`${API_BASE}/items`)
       if (response.data.success) {
         setItems(response.data.data)
       }
     } catch (error) {
-      console.error('Error loading items:', error)
+      setError('Failed to load items')
+    } finally {
+      setLoading(false)
     }
   }
 
   // Add new item
   const addItem = async (e) => {
     e.preventDefault()
+    setError('')
+
+    if (!formData.item_name.trim() || formData.per_unit_price <= 0 || formData.quantity <= 0) {
+      setError('Please fill all fields with valid values')
+      return
+    }
+
     try {
-      const response = await axios.post(`${API_BASE}/addItems`, formData)
+      setLoading(true)
+      console.log(API_BASE);
+
+      const response = await axios.post(`${API_BASE}/addItems`, {
+        item_name: formData.item_name.trim(),
+        quantity: parseInt(formData.quantity),
+        per_unit_price: parseFloat(formData.per_unit_price)
+      })
+
       if (response.data.success) {
         setFormData({ item_name: '', quantity: 1, per_unit_price: 0 })
-        loadItems()
+        await loadItems()
+      } else {
+        setError(response.data.error || 'Failed to add item')
       }
     } catch (error) {
       console.error('Error adding item:', error)
+      setError(error.response?.data?.error || 'Failed to add item. Check console for details.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -54,7 +78,7 @@ function App() {
       alround_quantity: items.reduce((sum, item) => sum + parseFloat(item.quantity), 0),
     }
   ]
-  // console.log('TotalCount', items, TotalCount);
+
   // Apply coupon code
   const applyCoupon = async () => {
     if (!couponCode.trim()) {
@@ -66,7 +90,6 @@ function App() {
       const response = await axios.get(`${API_BASE}/discount/${couponCode}`);
       if (response.data.success) {
         setDiscount(response.data.data.discount_percentage);
-        console.log('discount', response.data);
       } else {
         alert(response.data.error || 'Invalid coupon');
         setDiscount(0);
@@ -74,7 +97,6 @@ function App() {
     } catch (error) {
       setDiscount(0)
       console.log(error);
-
     }
   }
 
@@ -96,6 +118,13 @@ function App() {
           </p>
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {error}
+          </div>
+        )}
+
         {/* Add Item Form */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <h2 className="text-2xl font-semibold text-gray-800 mb-4">
@@ -113,6 +142,7 @@ function App() {
                 onChange={(e) => setFormData({ ...formData, item_name: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter item name"
+                disabled={loading}
               />
             </div>
             <div>
@@ -126,6 +156,7 @@ function App() {
                 value={formData.quantity}
                 onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={loading}
               />
             </div>
             <div>
@@ -145,23 +176,23 @@ function App() {
                   setFormData({ ...formData, per_unit_price: value });
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={loading}
               />
             </div>
             <div className="flex items-end">
               <button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
+                disabled={loading}
+                className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
-                Add Item
+                {loading ? 'Adding...' : 'Add Item'}
               </button>
             </div>
           </form>
         </div>
 
-        {/* Inventory Table */}
         <InventoryTable items={items} loadItems={loadItems} TotalCount={TotalCount} />
 
-        {/* Order Summary */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-2xl font-semibold text-gray-800 mb-4">
             🧾 Order Summary
